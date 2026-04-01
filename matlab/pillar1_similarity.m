@@ -1,29 +1,26 @@
-% FILE: pillar1_similarity.m
-% Finds songs most similar to a query song using cosine similarity.
-%
-% MATH:
-%   sim(a, b) = (a · b) / (‖a‖ × ‖b‖)
-%
-%   - dot(a,b)  = dot product  = sum of element-wise products
-%   - norm(a)   = magnitude    = sqrt(sum of squares)
-%   - Dividing by both norms scales result to [-1, 1]
-%   - sim = 1.0 → identical direction (same vibe)
-%   - sim = 0.0 → perpendicular (nothing in common)
-% ═══════════════════════════════════════════════════════════════════════
 function [scores, sorted_idx] = pillar1_similarity(S, query_idx)
- 
-    query     = S(query_idx, :);      % 1×5 row vector — the query song
-    num_songs = size(S, 1);
-    scores    = zeros(num_songs, 1);  % pre-allocate result vector
- 
-    for i = 1:num_songs
-        candidate = S(i, :);
- 
-        % COSINE SIMILARITY — the core LA formula
-        scores(i) = dot(query, candidate) / ...
-                    (norm(query) * norm(candidate));
+
+    query      = S(query_idx, :);
+    num_songs  = size(S, 1);
+    scores     = zeros(num_songs, 1);
+    query_norm = norm(query);
+
+    if query_norm == 0
+        warning('pillar1_similarity: query song has zero-norm feature vector.');
+        sorted_idx = (1:num_songs)';
+        return;
     end
- 
-    % Sort highest to lowest similarity
+
+    for i = 1:num_songs
+        candidate      = S(i, :);
+        candidate_norm = norm(candidate);
+
+        if candidate_norm == 0
+            scores(i) = 0;
+        else
+            scores(i) = dot(query, candidate) / (query_norm * candidate_norm);
+        end
+    end
+
     [scores, sorted_idx] = sort(scores, 'descend');
 end

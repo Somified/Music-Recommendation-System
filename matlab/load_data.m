@@ -1,15 +1,12 @@
-% FILE: load_data.m
-% Reads songs.csv and returns the feature matrix S and song names.
-% ═══════════════════════════════════════════════════════════════════════
-function [S, names] = load_data()
- 
-    T     = readtable('songs.csv');
-    names = T.name;          % cell array of song name strings
-    S     = T{:, 3:7};       % columns: energy, danceability, valence,
-                              %          acousticness, tempo
-                              % Result: (num_songs x 5) numeric matrix
- 
+function [S, names] = load_data(songs_file)
+
+    if nargin < 1
+        songs_file = fullfile('..', 'data', 'songs.csv');
+    end
+
+    T     = readtable(songs_file);
+    names = cellstr(T.name);
+    S     = T{:, 3:7};
+
     fprintf('Loaded %d songs with %d features each.\n', size(S,1), size(S,2));
 end
- 
- 
