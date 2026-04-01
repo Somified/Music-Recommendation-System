@@ -1,0 +1,15 @@
+name,artist,energy,danceability,valence,acousticness,tempo
+Blinding Lights,The Weeknd,0.73,0.514,0.334,0.0015,0.855
+Shape of You,Ed Sheeran,0.652,0.825,0.931,0.581,0.4799
+Bohemian Rhapsody,Queen,0.397,0.39,0.246,0.287,0.7202
+Levitating,Dua Lipa,0.884,0.695,0.914,0.0561,0.5151
+Starboy,The Weeknd;Daft Punk,0.587,0.679,0.486,0.141,0.93
+bad guy,Billie Eilish,0.425,0.701,0.562,0.328,0.6756
+Watermelon Sugar,Harry Styles,0.816,0.548,0.557,0.122,0.4769
+Smells Like Teen Spirit,Nirvana,0.912,0.502,0.72,0.0,0.5838
+As It Was,Harry Styles,0.731,0.52,0.662,0.342,0.8697
+golden hour,JVKE,0.593,0.515,0.153,0.653,0.4723
+Heat Waves,Glass Animals,0.525,0.761,0.531,0.44,0.4044
+Shivers,Ed Sheeran,0.859,0.788,0.822,0.281,0.7051
+Believer,Imagine Dragons,0.78,0.776,0.666,0.0622,0.6247
+Unstoppable,Sia,0.779,0.468,0.26,0.112,0.869
