@@ -1,26 +1,47 @@
-function [predicted, sorted_idx] = pillar3_ratings(R, user_idx)
+% FILE: pillar3_ratings.m
+% Pillar 3 — Rating Matrix
+% Predicts a score for each song using row/col means of R.
+% =========================================================================
 
-    [~, num_songs] = size(R);
+function p3_scores = pillar3_ratings(R)
 
-    user_row  = R(user_idx, :);
-    rated     = user_row(user_row > 0);
-    user_mean = mean(rated);
-
-    song_means = zeros(1, num_songs);
-    for j = 1:num_songs
-        col          = R(:, j);
-        rated_values = col(col > 0);
-        if ~isempty(rated_values)
-            song_means(j) = mean(rated_values);
-        end
+    if isempty(R)
+        warning('R matrix is empty. Pillar 3 scores set to zero.');
+        p3_scores = [];
+        return;
     end
 
-    predicted = (user_mean + song_means) / 2;
+    [n_users, n_songs] = size(R);
 
-    predicted(user_row > 0) = 0;
+    % ── Row means (user preference level)
+    user_means = mean(R, 2);          % n_users × 1
 
-    [predicted_sorted, sorted_idx_row] = sort(predicted, 'descend');
+    % ── Column means (song popularity)
+    song_means = mean(R, 1);          % 1 × n_songs
 
-    predicted  = predicted_sorted(:);
-    sorted_idx = sorted_idx_row(:);
+    % ── Global mean
+    global_mean = mean(R(:));
+
+    % ── Predicted rating matrix
+    R_predicted = user_means + song_means - global_mean;
+
+    % Clamp values to [0,1]
+    R_predicted = max(0, min(1, R_predicted));
+
+    % ── Final score per song
+    p3_scores = mean(R_predicted, 1)';   % column vector
+
+    % Normalize to [0,1]
+    mn = min(p3_scores);
+    mx = max(p3_scores);
+
+    if mx > mn
+        p3_scores = (p3_scores - mn) / (mx - mn);
+    else
+        p3_scores = zeros(n_songs, 1);
+    end
+
+    fprintf('Pillar 3 done. Score range: [%.3f, %.3f]\n', ...
+            min(p3_scores), max(p3_scores));
+
 end

@@ -1,15 +1,41 @@
-name,artist,popularity,rating
-Blinding Lights,The Weeknd,91,5
-Shape of You,Ed Sheeran,86,5
-Bohemian Rhapsody,Queen,75,4
-Levitating,Dua Lipa,84,5
-Starboy,The Weeknd;Daft Punk,90,5
-bad guy,Billie Eilish,84,5
-Watermelon Sugar,Harry Styles,89,5
-Smells Like Teen Spirit,Nirvana,83,5
-As It Was,Harry Styles,95,5
-golden hour,JVKE,81,5
-Heat Waves,Glass Animals,85,5
-Shivers,Ed Sheeran,0,1
-Believer,Imagine Dragons,88,5
-Unstoppable,Sia,81,5
+username,Blinding Lights,Shape of You,Bohemian Rhapsody,Levitating,Starboy,bad guy,Watermelon Sugar,Smells Like Teen Spirit,As It Was,golden hour,Heat Waves,Shivers,Believer,Unstoppable
+Column2,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Name if you want to give,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Ayushi Kumari ,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Arindam Kumar Singh,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Anya Chaturvedi,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Sidhi,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Anonymous,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Anonymous ,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Govind,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Pavani ,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Anonymous,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Abitatha Roy,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Saloni kumari ,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Anonymous,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Sarthak,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Animesh ,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Stuti Talwar,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Divyansh W,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Ashutosh,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Preksha,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Anonymous,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Anonymous,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+S.P.CHATURVEDI,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Das,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Ram ram bhai sareyane,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Dhurandar,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Hamza ali mazari,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+For you,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Divya,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Saumyta,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Cristianooooooo RONALDOOOOOOO,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+not interested ,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Shubhra,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+hy,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Woeter,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Benjamin Netanyahu ,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Hiral Khurana,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Prachy,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Fragmental,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Rohan,0,0,0,0,0,0,0,0,0,0,0,0,0,0

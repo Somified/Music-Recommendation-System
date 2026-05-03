@@ -1,108 +1,85 @@
-clear; clc;
+% FILE: main.m
+% Linear Algebra Music Recommendation System
+% =========================================================================
+clear; clc; close all;
 
-data_path    = fullfile('..', 'data');
-songs_file   = fullfile(data_path, 'songs.csv');
-ratings_file = fullfile(data_path, 'ratings.csv');
+%% ── 0. Load data ─────────────────────────────────────────────────────────
+[S, names, R, users] = load_data();
 
-[S_raw, names] = load_data(songs_file);
-num_songs      = length(names);
+%% ── 1. Normalise feature matrix ──────────────────────────────────────────
+S_norm = normalise(S);
 
-fprintf('\nLoaded %d songs with %d features.\n', size(S_raw,1), size(S_raw,2));
+%% ── 2. Choose query song ─────────────────────────────────────────────────
+QUERY_SONG = 'Blinding Lights';   % <-- change if needed
 
-S = normalise(S_raw);
-
-fprintf('\nAvailable songs:\n');
-for i = 1:num_songs
-    fprintf('  %2d.  %s\n', i, names{i});
+query_idx = find(strcmpi(names, QUERY_SONG), 1);
+if isempty(query_idx)
+    error('Song "%s" not found.', QUERY_SONG);
 end
 
-query_idx = 1;
-fprintf('\nQuery song: "%s"\n', names{query_idx});
+fprintf('Query song: "%s" (index %d)\n', names{query_idx}, query_idx);
 
-[p1_scores, p1_idx] = pillar1_similarity(S, query_idx);
+%% ── 3. Pillar 1 — Similarity ─────────────────────────────────────────────
+[p1_scores, p1_idx] = pillar1_similarity(S_norm, query_idx);
 
-fprintf('\n── Pillar 1: Songs similar to "%s" ──\n', names{query_idx});
-num_results = min(5, length(p1_idx) - 1);
-for k = 1:num_results
-    fprintf('  %d.  %-30s  similarity: %.4f\n', ...
-            k, names{p1_idx(k+1)}, p1_scores(k+1));
+%% ── 4. Pillar 2 — Taste Vector ───────────────────────────────────────────
+if ~isempty(R)
+    p2_scores = pillar2_taste(S_norm, R);
+else
+    warning('No ratings → Pillar 2 = 0');
+    p2_scores = zeros(size(S_norm,1),1);
 end
 
-liked = [1, 4, 8, 11];
-liked = liked(liked >= 1 & liked <= num_songs);
-
-fprintf('\nLiked songs: ');
-for i = 1:length(liked)
-    fprintf('"%s"  ', names{liked(i)});
-end
-fprintf('\n');
-
-[~, p2_scores, p2_idx] = pillar2_taste(S, liked);
-
-fprintf('\n── Pillar 2: Songs matching taste profile ──\n');
-for k = 1:min(5, length(p2_idx))
-    fprintf('  %d.  %-30s  match: %.4f\n', ...
-            k, names{p2_idx(k)}, p2_scores(k));
+%% ── 5. Pillar 3 — Ratings ────────────────────────────────────────────────
+if ~isempty(R)
+    p3_scores = pillar3_ratings(R);
+else
+    warning('No ratings → Pillar 3 = 0');
+    p3_scores = zeros(size(S_norm,1),1);
 end
 
-R_table = readtable(ratings_file);
-
-assert(height(R_table) == num_songs, ...
-    'Mismatch: songs.csv has %d songs but ratings.csv has %d rows.', ...
-    num_songs, height(R_table));
-
-rated_count = floor(num_songs / 2);
-real_row    = zeros(1, num_songs);
-real_row(1 : rated_count) = R_table.rating(1 : rated_count)';
-
-rng(42);
-R = [
-    real_row;
-    randi([2,5], 1, num_songs) .* double(rand(1, num_songs) > 0.4);
-    randi([1,5], 1, num_songs) .* double(rand(1, num_songs) > 0.5);
-    randi([3,5], 1, num_songs) .* double(rand(1, num_songs) > 0.3);
-];
-
-[p3_scores, p3_idx] = pillar3_ratings(R, 1);
-
-fprintf('\n── Pillar 3: Predicted ratings ──\n');
-for k = 1:min(5, length(p3_idx))
-    fprintf('  %d.  %-30s  predicted: %.4f\n', ...
-            k, names{p3_idx(k)}, p3_scores(k));
-end
-
+%% ── 6. Score Fusion ─────────────────────────────────────────────────────
 alpha = 0.5;
 beta  = 0.3;
 gamma = 0.2;
 
-p1_aligned             = zeros(num_songs, 1);
-p1_aligned(p1_idx)     = p1_scores;
+assert(abs(alpha + beta + gamma - 1) < 1e-9, 'Weights must sum to 1');
 
-p2_aligned             = zeros(num_songs, 1);
-p2_aligned(p2_idx)     = p2_scores;
+final_scores = alpha * p1_scores(:) + ...
+               beta  * p2_scores(:) + ...
+               gamma * p3_scores(:);
 
-p3_aligned             = zeros(num_songs, 1);
-p3_aligned(p3_idx)     = p3_scores;
+%% ── 7. Top Recommendations ──────────────────────────────────────────────
+[sorted_scores, sorted_idx] = sort(final_scores, 'descend');
 
-final_scores            = alpha * p1_aligned + beta * p2_aligned + gamma * p3_aligned;
-final_scores(query_idx) = 0;
+% Remove query song
+mask = sorted_idx ~= query_idx;
+sorted_idx = sorted_idx(mask);
+sorted_scores = sorted_scores(mask);
 
-[final_sorted, final_idx] = sort(final_scores, 'descend');
-
-fprintf('\n══════════════════════════════════════════════\n');
-fprintf('  FINAL RECOMMENDATIONS (all pillars fused)\n');
-fprintf('══════════════════════════════════════════════\n');
-for k = 1:min(5, length(final_idx))
-    fprintf('  %d.  %-30s  score: %.4f\n', ...
-            k, names{final_idx(k)}, final_sorted(k));
+fprintf('\nTop Recommendations:\n');
+for k = 1:min(10, length(sorted_idx))
+    fprintf('%2d. %-30s  %.4f\n', ...
+        k, names{sorted_idx(k)}, sorted_scores(k));
 end
-fprintf('══════════════════════════════════════════════\n');
 
-results = table(names, final_scores, p1_aligned, p2_aligned, p3_aligned, ...
-    'VariableNames', {'song','final_score','pillar1','pillar2','pillar3'});
+%% ── 8. Soulmates ────────────────────────────────────────────────────────
+if ~isempty(R) && size(R,1) >= 2
+    [soulmate_matrix, ~, ~] = find_soulmates(R, users);
+else
+    soulmate_matrix = [];
+end
 
-results_path = fullfile(data_path, 'results.csv');
-writetable(results, results_path);
-fprintf('\nSaved results to %s\n', results_path);
+%% ── 9. Save Results ─────────────────────────────────────────────────────
+results_tbl = table(names(sorted_idx(1:min(10,end))), ...
+                    sorted_scores(1:min(10,end)), ...
+                    'VariableNames', {'Song', 'Score'});
 
-visualise(S, names, final_scores, p1_scores, p1_idx, query_idx);
+writetable(results_tbl, '../data/results.csv');
+fprintf('\nSaved results to data/results.csv\n');
+
+%% ── 10. Visualise ───────────────────────────────────────────────────────
+visualise(S_norm, names, final_scores, p1_scores, p1_idx, ...
+          query_idx, soulmate_matrix, users);
+
+fprintf('\nDone.\n');
