@@ -10,7 +10,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from pathlib import Path
-import os, math, requests, urllib.parse
+import os, math, requests, urllib.parse, json
 
 # ── Paths ──────────────────────────────────────────────────────────────────
 _HERE = Path(__file__).resolve().parent
