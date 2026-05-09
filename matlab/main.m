@@ -23,12 +23,34 @@ end
 fprintf('Query song : "%s"  (index %d / %d)\n', names{query_idx}, query_idx, n_songs);
 
 %% ── 3. Pillar 1 — Hybrid Similarity ──────────────────────────────────────
-% Formula: hybrid(i) = 0.6 * cosine(i) + 0.4 * (1 / (1 + euclidean(i)))
-W_COS = 0.6;
-W_EUC = 0.4;
+% Formula: hybrid(i) = 0.5*cosine(i) + 0.3*(1/(1+euclidean(i))) + 0.2*geo_mean(i)
+W_COS = 0.5;   % cosine similarity weight
+W_EUC = 0.3;   % euclidean similarity weight
+% geo-mean weight = 1 - W_COS - W_EUC = 0.2  (applied in score fusion below)
 
 [hybrid_scores, cos_scores, euc_scores, hybrid_idx, dot_prods, norms_songs] = ...
     hybrid_similarity(S_norm, query_idx, W_COS, W_EUC);
+
+% Add geo-mean component (0.2 weight) to get full hybrid score
+% geo_mean(i) = exp( mean(log( 1/(1+|z_s[f]-z_q[f]|) )) ) across all features
+% This is computed from the normalised feature matrix
+n_feats     = size(S_norm, 2);
+geo_scores  = zeros(n_songs, 1);
+query_vec   = S_norm(query_idx, :);
+for ii = 1:n_songs
+    pf = 1 ./ (1 + abs(S_norm(ii,:) - query_vec));
+    geo_scores(ii) = exp(mean(log(pf + 1e-9)));
+end
+geo_scores(query_idx) = 0;
+if max(geo_scores) > 0, geo_scores = geo_scores / max(geo_scores); end
+
+% Blend: 0.5*cos + 0.3*euc + 0.2*geo
+W_GEO        = 1 - W_COS - W_EUC;   % = 0.2
+hybrid_scores = W_COS*cos_scores + W_EUC*euc_scores + W_GEO*geo_scores;
+hybrid_scores(query_idx) = 0;
+if max(hybrid_scores) > 0, hybrid_scores = hybrid_scores / max(hybrid_scores); end
+[~, hybrid_idx] = sort(hybrid_scores, 'descend');
+hybrid_idx = hybrid_idx(hybrid_idx ~= query_idx);
 
 % Legacy cosine-only for comparison
 [p1_scores, p1_idx] = pillar1_similarity(S_norm, query_idx);
@@ -69,7 +91,7 @@ sorted_final = sorted_final(mask);
 
 fprintf('\n===================================================================\n');
 fprintf('  TOP-%d RECOMMENDATIONS FOR: "%s"\n', TOP_N, names{query_idx});
-fprintf('  Engine: %.0f%% cosine + %.0f%% euclidean (hybrid Pillar 1)\n', W_COS*100, W_EUC*100);
+fprintf('  Engine: %.0f%% cosine + %.0f%% euclidean + 20%% geo-mean\n', W_COS*100, W_EUC*100);
 fprintf('===================================================================\n');
 fprintf('  %-4s  %-35s  %8s  %8s  %8s\n', 'Rank', 'Song', 'Hybrid', 'Cosine', 'Final');
 fprintf('  %s\n', repmat('-', 1, 70));
@@ -167,4 +189,34 @@ end
 %% ── 12. Visualise ────────────────────────────────────────────────────────
 visualise(S_norm, names, final_scores, hybrid_scores, hybrid_idx, query_idx, [], {});
 
-fprintf('\nDone! Run: streamlit run python/app.py\n');
+%% ── 13. Graph 1 — 3D Vector Space ────────────────────────────────────────
+% Pass the seed indices from section 2 and the top-10 recommended indices.
+rec_indices_3d = sorted_idx(1:min(5, length(sorted_idx)));
+plot_vector_space_3d(S_norm, names, [query_idx], rec_indices_3d);
+
+%% ── 14. Graph 2 — Normalisation Comparison ───────────────────────────────
+% Requires all 8 feature columns in S.
+% If load_data only loads 4 features, load the full 8 here.
+try
+    songs_tbl_full = readtable('../data/songs.csv');
+    feat_cols = {'energy','danceability','valence','acousticness', ...
+                 'speechiness','instrumentalness','liveness','tempo'};
+    S_full = [];
+    feat_names_used = {};
+    for k = 1:length(feat_cols)
+        fc = feat_cols{k};
+        if ismember(fc, songs_tbl_full.Properties.VariableNames)
+            S_full = [S_full, songs_tbl_full.(fc)]; %#ok<AGROW>
+            feat_names_used{end+1} = fc;            %#ok<AGROW>
+        end
+    end
+    if ~isempty(S_full)
+        plot_normalisation_comparison(double(S_full), feat_names_used);
+    else
+        warning('Could not find audio feature columns for Graph 2.');
+    end
+catch ME
+    warning('Graph 2 skipped: %s', ME.message);
+end
+
+fprintf('\nDone! Graphs saved to data/  |  Run: streamlit run python/app.py\n');

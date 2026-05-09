@@ -317,15 +317,23 @@ def cosine_sim_vec(q, S):
 def euc_sim_vec(q, S):
     return 1.0/(1.0+np.linalg.norm(S-q,axis=1))
 
+def minmax_scale(scores_dict, base=60, top=100):
+    vals = np.array(list(scores_dict.values()), dtype=float)
+    mn, mx = vals.min(), vals.max()
+    if mx - mn < 1e-9:
+        return {k: float(base + (top-base)/2) for k in scores_dict}
+    return {k: float(base + (top-base)*(v-mn)/(mx-mn)) for k,v in scores_dict.items()}
+
 def get_recommendations(seed_indices, alpha, beta, gamma, top_n=10, div_w=0.15):
     S_z,_,_ = zscore(S_raw)
     centroid = S_z[seed_indices].mean(axis=0)
 
-    pf       = per_feat_match(S_z, centroid)        # (n, feats)
-    geo      = geo_mean_score(pf)
-    cos      = cosine_sim_vec(centroid, S_z)
-    euc      = euc_sim_vec(centroid, S_z)
-    p1       = 0.50*geo + 0.30*cos + 0.20*euc
+    pf  = per_feat_match(S_z, centroid)
+    geo = geo_mean_score(pf)
+    cos = cosine_sim_vec(centroid, S_z)
+    euc = euc_sim_vec(centroid, S_z)
+    # weights: cosine 0.5 · euclidean 0.3 · geometric-mean 0.2
+    p1  = 0.50*cos + 0.30*euc + 0.20*geo
     if p1.max()>0: p1/=p1.max()
 
     p3 = np.zeros(len(song_names))
@@ -333,9 +341,9 @@ def get_recommendations(seed_indices, alpha, beta, gamma, top_n=10, div_w=0.15):
         p3 = np.clip(R.mean(1,keepdims=True)+R.mean(0,keepdims=True)-R.mean(),0,1).mean(0)
         if p3.max()>0: p3/=p3.max()
 
-    final = alpha*p1 + beta*p1 + gamma*p3   # p2 = p1 (same signal)
+    final = alpha*p1 + beta*p1 + gamma*p3
 
-    # ── Explicit deduplication: zero ALL seed songs ────────────────────────
+    # ── Zero all seeds ─────────────────────────────────────────────────────
     seed_names = {song_names[i] for i in seed_indices}
     for i, sn in enumerate(song_names):
         if sn in seed_names: final[i] = -1.0
@@ -348,7 +356,7 @@ def get_recommendations(seed_indices, alpha, beta, gamma, top_n=10, div_w=0.15):
         penalty = max(0,(dists.mean()-dists.min())/(1.5+1e-6))
         final[cidx] = max(0, final[cidx]-div_w*penalty)
 
-    # ── Deduplicate by name in output ─────────────────────────────────────
+    # ── Deduplicate by name ────────────────────────────────────────────────
     seen_names = set(seed_names)
     rec_idx    = []
     for idx in np.argsort(final)[::-1]:
@@ -358,14 +366,25 @@ def get_recommendations(seed_indices, alpha, beta, gamma, top_n=10, div_w=0.15):
         rec_idx.append(idx)
         if len(rec_idx) >= top_n: break
 
+    # ── Min-max scale to 60-100 for display ───────────────────────────────
+    raw_map    = {idx: float(final[idx]) for idx in rec_idx}
+    scaled_pct = minmax_scale(raw_map, base=60, top=100)
+
+    # ── Rich why: top-3 matching features per song ────────────────────────
     why = []
     for idx in rec_idx:
-        best     = int(np.argmax(per_feat_match(S_z[idx], centroid)))
-        euc_d    = float(np.linalg.norm(S_z[idx]-centroid))
-        feat_scr = float(per_feat_match(S_z[idx],centroid)[best])
-        why.append((FEAT_COLS[best], euc_d, feat_scr))
+        pf_row = per_feat_match(S_z[idx], centroid)
+        top3_i = np.argsort(pf_row)[::-1][:3]
+        why.append({
+            "top3":    [(FEAT_COLS[i], float(pf_row[i])) for i in top3_i],
+            "euc_d":   float(np.linalg.norm(S_z[idx]-centroid)),
+            "pf_row":  pf_row,
+            "cos":     float(cos[idx]),
+            "euc_sim": float(euc[idx]),
+            "geo":     float(geo[idx]),
+        })
 
-    return rec_idx, final, p1, p3, centroid, S_z, why
+    return rec_idx, final, scaled_pct, p1, p3, centroid, S_z, why
 
 def compute_corr():
     if R.shape[0]<2 or R.sum()==0: return None,None,None,None
@@ -578,7 +597,7 @@ elif page == "🎯 Your Playlist":
     top_n  = c1.select_slider("Playlist length",[5,8,10,12,15],value=10)
     div_w  = c2.slider("Diversity",0.0,0.5,0.15,0.05)
 
-    rec_idx,final_scores,p1,p3,centroid,S_z,why = get_recommendations(
+    rec_idx,final_scores,scaled_pct,p1,p3,centroid,S_z,why = get_recommendations(
         seed_indices,alpha,beta,gamma,top_n,div_w
     )
 
@@ -636,45 +655,75 @@ elif page == "🎯 Your Playlist":
     # Recommendations
     st.markdown(f"<div class='section-title'>Recommended for You</div>", unsafe_allow_html=True)
 
-    for rank,(idx,(dom_feat,euc_d,feat_scr)) in enumerate(zip(rec_idx,why),1):
-        art_url = rec_art.get((song_names[idx],song_artists[idx]),"")
-        tid     = str(track_ids[idx]) if track_ids[idx] else ""
+    for rank, idx in enumerate(rec_idx, 1):
+        w        = why[rank-1]
+        top3     = w["top3"]           # [(feat, score), (feat, score), (feat, score)]
+        euc_d    = w["euc_d"]
+        pf_row   = w["pf_row"]
+        cos_v    = w["cos"]
+        euc_v    = w["euc_sim"]
+        geo_v    = w["geo"]
+        disp_pct = scaled_pct[idx]
 
-        # Per-feature mini bars (rose tints only)
-        pf = per_feat_match(S_z[idx], centroid)
-        bars = "".join(
-            f"<span style='display:inline-block;width:{int(pf[i]*44)}px;height:5px;"
-            f"border-radius:3px;margin-right:2px;"
-            f"background:{BRILL_ROSE if FEAT_COLS[i]==dom_feat else ROSE_MID};' "
-            f"title='{FEAT_COLS[i]}:{pf[i]:.2f}'></span>"
-            for i in range(len(FEAT_COLS))
-        )
+        art_url  = rec_art.get((song_names[idx], song_artists[idx]), "")
+        tid      = str(track_ids[idx]) if track_ids[idx] else ""
 
-        embed = spotify_embed(tid) if tid not in ('nan','None','') else ""
+        # ── "Why this song?" — top-3 features natural language ────────────
+        top3_names = [f for f, _ in top3]
+        why_text = "Strong match in " + ", ".join(top3_names)
+
+        # ── Feature contribution bars with labels ──────────────────────────
+        top3_set = {f for f, _ in top3}
+        bar_rows = ""
+        for i, feat in enumerate(FEAT_COLS):
+            score    = float(pf_row[i])
+            fill_pct = int(score * 100)
+            is_top   = feat in top3_set
+            bar_col  = BRILL_ROSE if is_top else ROSE_MID
+            label_col= OLD_ROSE   if is_top else MUTED
+            weight   = "600"      if is_top else "400"
+            bar_rows += (
+                f"<div style='display:flex;align-items:center;gap:.5rem;"
+                f"margin:.18rem 0;'>"
+                f"<span style='font-size:.68rem;color:{label_col};font-weight:{weight};"
+                f"width:90px;text-align:right;flex-shrink:0;'>{feat}</span>"
+                f"<div style='flex:1;background:{ROSE_MID};border-radius:4px;height:7px;'>"
+                f"<div style='width:{fill_pct}%;background:{bar_col};height:100%;"
+                f"border-radius:4px;'></div></div>"
+                f"<span style='font-size:.68rem;color:{label_col};font-weight:{weight};"
+                f"width:2.5rem;'>{score:.2f}</span>"
+                f"</div>"
+            )
+
+        embed = spotify_embed(tid) if tid not in ("nan","None","") else ""
 
         if art_url:
-            art_html = f'<img src="{art_url}" style="width:64px;height:64px;border-radius:10px;object-fit:cover;flex-shrink:0;" alt="">'
+            art_html = f'<img src="{art_url}" style="width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0;" alt="">'  
         else:
             fv  = norm01(idx)
-            svg = fingerprint_svg(fv,64,64)
-            b64 = "data:image/svg+xml;charset=utf-8,"+svg.replace('#','%23').replace('"',"'")
-            art_html = f'<img src="{b64}" style="width:64px;height:64px;border-radius:10px;" alt="">'
+            svg = fingerprint_svg(fv, 72, 72)
+            b64 = "data:image/svg+xml;charset=utf-8," + svg.replace("#", "%23").replace('"', "'")
+            art_html = f'<img src="{b64}" style="width:72px;height:72px;border-radius:10px;flex-shrink:0;" alt="">'
 
         st.markdown(f"""
-        <div class='rec-row'>
+        <div class='rec-row' style='align-items:flex-start;'>
             <div class='rec-rank'>#{rank}</div>
             {art_html}
-            <div class='rec-body'>
+            <div class='rec-body' style='flex:1;'>
                 <div class='rec-name'>{song_names[idx]}</div>
                 <div class='rec-artist'>{song_artists[idx]}</div>
-                <div style='margin:.3rem 0 .15rem;'>{bars}</div>
-                <div>
-                    <span class='tag-lime'>{dom_feat}</span>
-                    <span class='rec-why'>dist {euc_d:.2f}σ · best match on {dom_feat} ({feat_scr:.2f})</span>
-                </div>
+                <div class='rec-why' style='margin:.35rem 0;'>💡 {why_text}</div>
+                <details style='margin-top:.4rem;'>
+                    <summary style='font-size:.73rem;color:{MUTED};cursor:pointer;
+                               list-style:none;'>&rsaquo; Feature contribution</summary>
+                    <div style='margin-top:.4rem;'>{bar_rows}</div>
+                    <div style='font-size:.68rem;color:{MUTED};margin-top:.4rem;'>
+                        cos {cos_v:.3f} · euc {euc_v:.3f} · geo {geo_v:.3f} · dist {euc_d:.2f}σ
+                    </div>
+                </details>
                 {embed}
             </div>
-            <div><span class='score-pill'>{final_scores[idx]*100:.1f}%</span></div>
+            <div style='padding-top:.1rem;'><span class='score-pill'>{disp_pct:.1f}%</span></div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -693,7 +742,7 @@ elif page == "🎯 Your Playlist":
             rows.append({"#":f"#{rank}","Song":song_names[idx][:26],
                          "s·c̄":f"{dot:+.3f}","‖s‖":f"{sn:.3f}",
                          "Cosine":f"{cos:.3f}","Eucl.dist":f"{ed:.3f}",
-                         "Final %":f"{final_scores[idx]*100:.1f}%"})
+                         "Scaled %":f"{scaled_pct.get(idx, final_scores[idx]*100):.1f}%"})
         df_r=pd.DataFrame(rows)
         hdr="".join(f"<th>{c}</th>" for c in df_r.columns)
         bdy="".join(
@@ -739,7 +788,7 @@ elif page == "🎯 Your Playlist":
             eu=float(1/(1+np.linalg.norm(S_z[idx]-centroid)))
             grows.append({"#":f"#{rank}","Song":song_names[idx][:24],
                            "Geo Mean":f"{geo:.4f}","Cosine":f"{max(cs,0):.4f}",
-                           "Eucl.Sim":f"{eu:.4f}","P1":f"{p1[idx]:.4f}","Final %":f"{final_scores[idx]*100:.1f}%"})
+                           "Eucl.Sim":f"{eu:.4f}","P1":f"{p1[idx]:.4f}","Scaled %":f"{scaled_pct.get(idx, final_scores[idx]*100):.1f}%"})
         gdf=pd.DataFrame(grows)
         hdr="".join(f"<th>{c}</th>" for c in gdf.columns)
         bdy="".join("<tr>"+"".join(

@@ -10,7 +10,8 @@ function [taste_vec, scores, sorted_idx] = pillar2_taste(S, liked_indices)
         return;
     end
 
-    liked_songs = S(liked_indices, :);
+    disp(liked_indices)
+    liked_songs = S(liked_indices + 1, :);
     taste_vec   = mean(liked_songs, 1);
 
     fprintf('Taste vector: energy=%.2f  dance=%.2f  valence=%.2f  acoustic=%.2f  tempo=%.2f\n', ...

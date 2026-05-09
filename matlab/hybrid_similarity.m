@@ -33,11 +33,16 @@ function [hybrid_scores, cos_scores, euc_scores, sorted_idx, dot_products, norms
          hybrid_similarity(S_norm, query_idx, w_cos, w_euc)
 
     % ── Default weights ───────────────────────────────────────────────────
-    if nargin < 3, w_cos = 0.6; end
-    if nargin < 4, w_euc = 0.4; end
+    if nargin < 3, w_cos = 0.5; end
+    if nargin < 4, w_euc = 0.3; end
 
-    assert(abs(w_cos + w_euc - 1.0) < 1e-9, ...
-           'Weights must sum to 1. Got w_cos=%.2f, w_euc=%.2f', w_cos, w_euc);
+    % Note: geo-mean component (0.2) is baked into p1 before calling this function.
+    % Here w_cos + w_euc represent the split of the remaining 0.8 weight.
+    % Default: w_cos=0.5, w_euc=0.3 (sum intentionally < 1; geo adds the rest in main.m)
+    % Allow w_cos+w_euc <= 1 when geo fills the remainder
+    if w_cos + w_euc > 1.0 + 1e-9
+        error('w_cos + w_euc must not exceed 1. Got %.2f + %.2f', w_cos, w_euc);
+    end
 
     n_songs  = size(S_norm, 1);
     query    = S_norm(query_idx, :)';          % column vector (n_feats x 1)

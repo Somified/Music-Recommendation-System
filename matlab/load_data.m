@@ -8,7 +8,7 @@ function [S, names, R, users] = load_data()
     songs_tbl = readtable('../data/songs.csv');
 
     % Song names
-    names = songs_tbl.name;
+    names = songs_tbl.track_name;
 
     % Feature matrix (adjust if your CSV columns differ)
     S = [songs_tbl.tempo, ...
