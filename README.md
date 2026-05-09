@@ -225,6 +225,8 @@ The system includes:
 * Euclidean distance calculations
 * Radar charts
 * Feature contribution breakdowns
+* Recommendation score transparency
+* Similarity scaling interpretation
 
 This allows users to understand *why* a song was recommended.
 
@@ -241,6 +243,147 @@ The radar chart visualizes:
 in multi-dimensional feature space.
 
 This helps users intuitively understand the structure of musical similarity.
+
+---
+
+# 14. Recommendation Score Scaling
+
+Initially, raw similarity values occupied a very narrow numerical range.
+
+Example:
+
+* 72.6
+* 72.5
+* 72.4
+
+Although mathematically correct, such compressed scores reduced interpretability and visual distinction between recommendations.
+
+To improve readability while preserving ranking order, min-max scaling was applied:
+
+[
+\text{Scaled Score} =
+\frac{x-x_{min}}{x_{max}-x_{min}}
+]
+
+The scores were then stretched into a more interpretable range.
+
+This improved:
+
+* visual differentiation
+* recommendation clarity
+* interpretability of rankings
+
+without changing the underlying recommendation order.
+
+---
+
+# 15. Weighted Hybrid Recommendation Logic
+
+The final recommendation score combines multiple similarity metrics using weighted aggregation:
+
+* Cosine Similarity → 50%
+* Euclidean Similarity → 30%
+* Feature Consistency / Geometric Mean → 20%
+
+This ensures that:
+
+* directional similarity is considered
+* geometric proximity is considered
+* feature consistency is rewarded
+
+The weighted hybrid system produces more balanced and realistic recommendations.
+
+---
+
+# 16. MATLAB Visualization and Statistical Analysis
+
+MATLAB was used to create additional analytical visualizations supporting the recommendation system.
+
+These visualizations strengthen the mathematical interpretation of the project.
+
+---
+
+# 17. 3D Feature Space Visualization
+
+A 3D vector-space visualization was created using:
+
+* Energy (X-axis)
+* Danceability (Y-axis)
+* Valence (Z-axis)
+
+The graph visualizes:
+
+* all songs in the dataset
+* selected seed songs
+* the taste centroid
+* recommended songs
+
+The centroid acts as the geometric center of user preference.
+
+Recommended songs are selected based on proximity and similarity to this centroid.
+
+This visualization demonstrates:
+
+* vectors in feature space
+* geometric clustering
+* centroid-based recommendation logic
+* vector-space similarity analysis
+
+---
+
+# 18. Before vs After Normalization Analysis
+
+A normalization comparison graph was generated to demonstrate the importance of z-score standardization.
+
+Before normalization:
+
+* features existed on vastly different scales
+* tempo dominated similarity computations
+
+After normalization:
+
+* all features shared comparable scales
+* each feature contributed fairly to calculations
+
+The graph validates:
+
+* matrix column-wise mean normalization
+* standard deviation standardization
+* balanced vector-space representation
+
+---
+
+# 19. Statistical Validation of Standardization
+
+The project validates normalization mathematically by showing:
+
+* post-normalization mean:
+
+[
+\mu \approx 0
+]
+
+* post-normalization standard deviation:
+
+[
+\sigma \approx 1
+]
+
+This confirms successful standardization of feature dimensions.
+
+---
+
+# 20. Heatmap-Based Explainability
+
+The heatmap visualization displays feature-wise matching between:
+
+* seed songs
+* centroid vector
+* recommended songs
+
+This provides transparency by showing which features contributed most strongly to similarity.
+
+Instead of acting as a black-box recommender, the system visually explains recommendation reasoning.
 
 ---
 
@@ -280,7 +423,13 @@ Every song in the dataset is compared against the centroid using:
 
 ---
 
-## Step 6 — Recommendation Ranking
+## Step 6 — Hybrid Score Aggregation
+
+Multiple similarity measures are combined into a final weighted recommendation score.
+
+---
+
+## Step 7 — Recommendation Ranking
 
 Songs with the highest overall similarity are ranked and recommended.
 
@@ -294,6 +443,8 @@ This project demonstrates how Linear Algebra can be applied to:
 * similarity analysis
 * vector-space modeling
 * geometric interpretation of data
+* statistical normalization
+* explainable AI systems
 
 The project also emphasizes explainable recommendation systems rather than opaque black-box approaches.
 
@@ -307,6 +458,24 @@ The project also emphasizes explainable recommendation systems rather than opaqu
 * Interactive visualization tools
 * Hybrid similarity methodology
 * Practical use of vector-space modeling
+* MATLAB-based analytical validation
+* Statistical normalization verification
+* Interactive recommendation transparency
+
+---
+
+# Project Features
+
+* Interactive Streamlit interface
+* Seed-song based recommendations
+* Heatmap-based feature matching
+* Dot product and norm transparency
+* Radar chart visualization
+* MATLAB analytical graphs
+* Weighted recommendation scoring
+* Recommendation score scaling
+* Centroid-based recommendation engine
+* Feature contribution analysis
 
 ---
 
@@ -342,6 +511,24 @@ Geometric mean penalizes imbalance and rewards songs that consistently match acr
 
 ---
 
+## Why use weighted aggregation?
+
+Different similarity measures capture different aspects of recommendation quality. Weighted aggregation balances these factors.
+
+---
+
+## Why were scores scaled?
+
+Raw similarity values occupied a narrow range, so scaling improved interpretability and visual distinction while preserving ranking order.
+
+---
+
+## What does the 3D graph represent?
+
+The graph visualizes songs as vectors in feature space and demonstrates centroid-based recommendation logic.
+
+---
+
 # Final Project Framing
 
 Melodix can be described as:
@@ -354,4 +541,7 @@ This project demonstrates the intersection of:
 * Geometry
 * Data Representation
 * Similarity Analysis
-* Interactive Recommendation Systems
+* Statistical Standardization
+* Explainable Recommendation Systems
+* Interactive Visualization
+* Vector-Space Modeling
